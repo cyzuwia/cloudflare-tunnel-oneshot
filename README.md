@@ -7,11 +7,11 @@
 ## 🚀 快速开始
 ### 国际网络用户
 ```bash
-curl -sSL https://raw.githubusercontent.com/yourusername/cloudflare-tunnel-oneshot/main/install.sh | sudo bash -s -- --token=你的隧道令牌
+curl -sSL https://raw.githubusercontent.com/cyzuwia/cloudflare-tunnel-oneshot/main/install.sh | sudo bash -s -- --token=你的隧道令牌
 ```
 ### 中国大陆用户
 ```bash
-curl -sSL https://gitee.com/yourusername/cloudflare-tunnel-oneshot/raw/main/install.sh | sudo bash -s -- --token=你的隧道令牌 --cn
+curl -sSL https://gitee.com/cyzuwia/cloudflare-tunnel-oneshot/raw/main/install.sh | sudo bash -s -- --token=你的隧道令牌 --cn
 ```
 ## 📜 使用说明
 安装后使用 `ctunnel` 命令管理服务：
