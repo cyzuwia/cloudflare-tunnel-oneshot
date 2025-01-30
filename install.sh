@@ -5,28 +5,34 @@
 # 版本: 3.0
 # =================================================================
 set -euo pipefail
+
 # 全局配置
 BIN_PATH="/usr/local/bin/cloudflared"
 CONFIG_DIR="/etc/cloudflared"
 LOG_FILE="/var/log/cloudflared.log"
+
 # 镜像源配置
 declare -A MIRRORS=(
     ["github"]="https://raw.githubusercontent.com/cyzuwia/cloudflare-tunnel-oneshot/main"
     ["gitee"]="https://gitee.com/cyzuwia/cloudflare-tunnel-oneshot/raw/main"
 )
+
 # 颜色定义
 COLOR_RED='\033[31m'
 COLOR_GREEN='\033[32m'
 COLOR_YELLOW='\033[33m'
 COLOR_RESET='\033[0m'
+
 # 错误处理
 die() {
     echo -e "${COLOR_RED}错误: $*${COLOR_RESET}" >&2
     exit 1
 }
+
 success() {
     echo -e "${COLOR_GREEN}$*${COLOR_RESET}"
 }
+
 # 智能选择镜像源
 select_mirror() {
     if curl -m 3 -sI https://raw.githubusercontent.com | grep -q "HTTP/2 200"; then
@@ -35,6 +41,7 @@ select_mirror() {
         echo "gitee"
     fi
 }
+
 # 安全读取令牌
 read_token() {
     echo -ne "${COLOR_YELLOW}请输入 Cloudflare 隧道令牌 (输入不可见): ${COLOR_RESET}"
@@ -49,6 +56,7 @@ read_token() {
     fi
     [[ "$TOKEN" =\~ ^eyJ ]] || die "令牌格式错误！应以 eyJ 开头"
 }
+
 # 安装依赖
 install_deps() {
     if ! command -v wget &>/dev/null; then
@@ -58,6 +66,7 @@ install_deps() {
         die "依赖安装失败"
     fi
 }
+
 # 下载组件
 download_component() {
     local url="$1"
@@ -66,6 +75,7 @@ download_component() {
         die "下载失败: ${url}"
     fi
 }
+
 # 配置Linux服务
 setup_linux() {
     echo "-> 部署 systemd 服务..."
@@ -75,6 +85,7 @@ setup_linux() {
     sudo systemctl daemon-reload
     sudo systemctl enable --now cloudflared
 }
+
 # 配置macOS服务
 setup_macos() {
     echo "-> 部署 launchd 服务..."
@@ -106,6 +117,7 @@ setup_macos() {
 EOF
     sudo launchctl load -w "/Library/LaunchDaemons/com.cloudflare.tunnel.plist"
 }
+
 # 主流程
 main() {
     clear
@@ -150,4 +162,5 @@ main() {
     echo -e "  ctunnel uninstall # 完全卸载"
     echo -e "\n日志文件: ${LOG_FILE}"
 }
+
 main "$@"
