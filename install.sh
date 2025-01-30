@@ -130,7 +130,7 @@ main() {
             *) die "未知参数: $1" ;;
         esac
     done
-    [[ "$SOURCE_URL" == "${MIRRORS[gitee]}" ]] || SOURCE_URL="${MIRRORS[$(select_mirror)]}"
+    SOURCE_URL="${MIRRORS[$(select_mirror)]}"
     # 核心步骤
     read_token
     install_deps
