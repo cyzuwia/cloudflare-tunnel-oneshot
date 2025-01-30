@@ -1,4 +1,4 @@
-# Cloudflare Tunnel 终极一键部署方案
+# Cloudflare Tunnel 一键部署
 只需一条命令即可完成隧道服务的安装、配置和启动！
 ## 🚀 快速开始
 ### 国际网络用户
@@ -28,4 +28,3 @@ ctunnel uninstall # 完全卸载服务
 3. 卸载命令将永久删除所有相关文件
 ## 📄 开源协议
 [MIT License](LICENSE)
-```
