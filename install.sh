@@ -11,8 +11,8 @@ CONFIG_DIR="/etc/cloudflared"
 LOG_FILE="/var/log/cloudflared.log"
 # 镜像源配置
 declare -A MIRRORS=(
-    ["github"]="https://raw.githubusercontent.com/yourusername/cloudflare-tunnel-oneshot/main"
-    ["gitee"]="https://gitee.com/yourusername/cloudflare-tunnel-oneshot/raw/main"
+    ["github"]="https://raw.githubusercontent.com/cyzuwia/cloudflare-tunnel-oneshot/main"
+    ["gitee"]="https://gitee.com/cyzuwia/cloudflare-tunnel-oneshot/raw/main"
 )
 # 颜色定义
 COLOR_RED='\033[31m'
