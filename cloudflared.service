@@ -7,6 +7,8 @@ ExecStart=/usr/local/bin/cloudflared tunnel run --token {TOKEN}
 Restart=always
 RestartSec=5
 User=root
+StandardOutput=append:/var/log/cloudflared.log
+StandardError=append:/var/log/cloudflared.log
 
 [Install]
 WantedBy=multi-user.target
