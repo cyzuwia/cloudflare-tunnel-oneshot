@@ -2,19 +2,19 @@
 
 **一条命令 + 安全交互**，零门槛部署 Cloudflare 隧道服务！
 
-### 作者：_额丶Y_
-版本：1.0
+**作者：**_额丶Y_
+版本：3.0
 
 ## 🚀 极简安装
 
 ### 国际网络用户
 ```bash
-curl -sSL https://raw.githubusercontent.com/yourusername/cloudflare-tunnel-oneshot/main/install.sh | sudo bash
+curl -sSL https://raw.githubusercontent.com/cyzuwia/cloudflare-tunnel-oneshot/main/install.sh | sudo bash
 ```
 
 ### 中国大陆用户
 ```bash
-curl -sSL https://gitee.com/yourusername/cloudflare-tunnel-oneshot/raw/main/install.sh | sudo bash -s -- --cn
+curl -sSL https://gitee.com/cyzuwia/cloudflare-tunnel-oneshot/raw/main/install.sh | sudo bash -s -- --cn
 ```
 
 安装过程会提示输入令牌，**终端环境下输入自动隐藏**
