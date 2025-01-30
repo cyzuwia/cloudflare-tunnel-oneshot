@@ -1,51 +1,57 @@
 #!/bin/bash
+# =================================================================
+# Cloudflare Tunnel 交互式一键安装脚本
+# 支持: Linux (systemd)/macOS (launchd)
+# 版本: 3.0
+# =================================================================
+
 set -euo pipefail
 
-# ==============================================
-# Cloudflare Tunnel 终极一键安装脚本
-# 支持系统: Linux (systemd)/macOS (launchd)
-# 仓库: https://github.com/yourusername/cloudflare-tunnel-oneshot
-# ==============================================
-
-# 配置参数
-TOKEN=""
-REPO="yourusername/cloudflare-tunnel-oneshot"
-CN_MIRROR="https://gitee.com/yourusername/cloudflare-tunnel-oneshot/raw/main"
-GITHUB_RAW="https://raw.githubusercontent.com/$REPO/main"
+# 全局配置
 BIN_PATH="/usr/local/bin/cloudflared"
-CONFIG_PATH="/etc/cloudflared/token"
+CONFIG_DIR="/etc/cloudflared"
+LOG_FILE="/var/log/cloudflared.log"
 
-# 解析参数
-while [[ $# -gt 0 ]]; do
-  case "$1" in
-    --token=*)
-      TOKEN="${1#*=}"
-      shift
-      ;;
-    --cn)
-      SOURCE_URL="$CN_MIRROR"
-      shift
-      ;;
-    *)
-      echo "未知参数: $1"
-      exit 1
-      ;;
-  esac
-done
+# 镜像源配置
+declare -A MIRRORS=(
+  ["github"]="https://raw.githubusercontent.com/yourusername/cloudflare-tunnel-oneshot/main"
+  ["gitee"]="https://gitee.com/yourusername/cloudflare-tunnel-oneshot/raw/main"
+)
 
-SOURCE_URL="${SOURCE_URL:-$GITHUB_RAW}"
+# 颜色定义
+COLOR_RED='\033[31m'
+COLOR_GREEN='\033[32m'
+COLOR_YELLOW='\033[33m'
+COLOR_RESET='\033[0m'
 
-# 字体颜色定义
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-NC='\033[0m'
+# 错误处理
+die() { echo -e "${COLOR_RED}错误: $*${COLOR_RESET}" >&2; exit 1; }
+success() { echo -e "${COLOR_GREEN}$*${COLOR_RESET}"; }
 
-fail() { echo -e "${RED}[错误] $*${NC}" >&2; exit 1; }
-success() { echo -e "${GREEN}[成功] $*${NC}"; }
+# 智能选择镜像源
+select_mirror() {
+  if curl -m 3 -sI https://raw.githubusercontent.com | grep -q "HTTP/2 200"; then
+    echo "github"
+  else
+    echo "gitee"
+  fi
+}
 
-# 令牌验证
-validate_token() {
-  [[ "$TOKEN" =~ ^eyJ ]] || fail "令牌格式错误！应以 eyJ 开头"
+# 安全读取令牌
+read_token() {
+  echo -ne "${COLOR_YELLOW}请输入 Cloudflare 隧道令牌 (输入不可见): ${COLOR_RESET}"
+  
+  # 终端环境隐藏输入
+  if [ -t 0 ]; then
+    stty -echo
+    read -r TOKEN
+    stty echo
+    echo
+  else
+    read -r TOKEN
+  fi
+
+  [[ "$TOKEN" =~ ^eyJ ]] || die "令牌格式错误！应以 eyJ 开头"
 }
 
 # 安装依赖
@@ -54,33 +60,33 @@ install_deps() {
     echo "-> 安装系统依赖..."
     (apt-get update && apt-get install -y wget) || \
     (yum install -y wget) || \
-    fail "无法安装 wget"
+    die "依赖安装失败"
   fi
 }
 
 # 下载组件
 download_component() {
-  local component=$1
-  local target_path=$2
-  echo "-> 下载 $component..."
-  wget -q "$SOURCE_URL/$component" -O "$target_path" || fail "下载失败: $component"
-  chmod +x "$target_path"
+  local url="$1"
+  local output="$2"
+  if ! wget -q --tries=3 --timeout=10 -O "$output" "$url"; then
+    die "下载失败: ${url}"
+  fi
 }
 
 # 配置Linux服务
 setup_linux() {
-  echo "-> 配置 systemd 服务..."
-  wget -q "$SOURCE_URL/cloudflared.service" -O /etc/systemd/system/cloudflared.service
-  sed -i "s|{TOKEN}|$TOKEN|g" /etc/systemd/system/cloudflared.service
-  systemctl daemon-reload
-  systemctl enable --now cloudflared
+  echo "-> 部署 systemd 服务..."
+  download_component "${SOURCE_URL}/cloudflared.service" "/tmp/cloudflared.service"
+  sed -i "s|{TOKEN}|${TOKEN}|g; s|{LOG_FILE}|${LOG_FILE}|g" /tmp/cloudflared.service
+  sudo mv /tmp/cloudflared.service /etc/systemd/system/
+  sudo systemctl daemon-reload
+  sudo systemctl enable --now cloudflared
 }
 
 # 配置macOS服务
 setup_macos() {
-  echo "-> 配置 launchd 服务..."
-  PLIST_PATH="/Library/LaunchDaemons/com.cloudflare.tunnel.plist"
-  sudo tee "$PLIST_PATH" >/dev/null <<EOF
+  echo "-> 部署 launchd 服务..."
+  sudo tee "/Library/LaunchDaemons/com.cloudflare.tunnel.plist" >/dev/null <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -89,12 +95,16 @@ setup_macos() {
   <string>com.cloudflare.tunnel</string>
   <key>ProgramArguments</key>
   <array>
-    <string>$BIN_PATH</string>
+    <string>${BIN_PATH}</string>
     <string>tunnel</string>
     <string>run</string>
     <string>--token</string>
-    <string>$TOKEN</string>
+    <string>${TOKEN}</string>
   </array>
+  <key>StandardOutPath</key>
+  <string>${LOG_FILE}</string>
+  <key>StandardErrorPath</key>
+  <string>${LOG_FILE}</string>
   <key>RunAtLoad</key>
   <true/>
   <key>KeepAlive</key>
@@ -102,44 +112,58 @@ setup_macos() {
 </dict>
 </plist>
 EOF
-  launchctl load -w "$PLIST_PATH"
+  sudo launchctl load -w "/Library/LaunchDaemons/com.cloudflare.tunnel.plist"
 }
 
-# 主安装流程
+# 主流程
 main() {
   clear
-  echo "======= Cloudflare Tunnel 一键安装 ======="
-  validate_token
-  install_deps
+  echo -e "\n${COLOR_GREEN}=== Cloudflare Tunnel 交互式安装 ===${COLOR_RESET}"
   
-  # 获取系统架构
+  # 参数处理
+  SOURCE_URL="${MIRRORS[gitee]}"
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --cn) shift ;;
+      *) die "未知参数: $1" ;;
+    esac
+  done
+  [[ "$SOURCE_URL" == "${MIRRORS[gitee]}" ]] || SOURCE_URL="${MIRRORS[$(select_mirror)]}"
+
+  # 核心步骤
+  read_token
+  install_deps
+
+  # 下载组件
   ARCH=$(uname -m)
   case "$ARCH" in
     x86_64)  ARCH="amd64" ;;
     aarch64) ARCH="arm64" ;;
-    *)       fail "不支持的架构: $ARCH" ;;
+    *)       die "不支持的架构: $ARCH" ;;
   esac
-
-  # 下载cloudflared
-  echo "-> 下载 cloudflared ($ARCH)..."
-  wget -q "$SOURCE_URL/cloudflared-linux-$ARCH" -O "$BIN_PATH" || fail "下载二进制失败"
-  chmod +x "$BIN_PATH"
-
-  # 安装管理脚本
-  download_component ctunnel /usr/local/bin/ctunnel
+  download_component "${SOURCE_URL}/cloudflared-${ARCH}" "$BIN_PATH"
+  sudo chmod +x "$BIN_PATH"
+  download_component "${SOURCE_URL}/ctunnel" "/usr/local/bin/ctunnel"
+  sudo chmod +x "/usr/local/bin/ctunnel"
 
   # 配置服务
   case "$(uname -s)" in
     Linux*)  setup_linux ;;
     Darwin*) setup_macos ;;
-    *)       fail "不支持的操作系统" ;;
+    *)       die "不支持的操作系统" ;;
   esac
 
-  success "安装完成！"
-  echo "运行命令管理隧道:"
-  echo "  ctunnel status    # 查看状态"
-  echo "  ctunnel update    # 更新令牌"
-  echo "  ctunnel uninstall # 完全卸载"
+  # 安全存储令牌
+  sudo mkdir -p "$CONFIG_DIR"
+  echo "$TOKEN" | sudo tee "${CONFIG_DIR}/token" >/dev/null
+  sudo chmod 600 "${CONFIG_DIR}/token"
+
+  success "\n✔ 安装成功！"
+  echo -e "管理命令:"
+  echo -e "  ctunnel status    # 查看状态"
+  echo -e "  ctunnel update    # 更新令牌"
+  echo -e "  ctunnel uninstall # 完全卸载"
+  echo -e "\n日志文件: ${LOG_FILE}"
 }
 
-main
+main "$@"
